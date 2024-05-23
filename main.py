@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import sys
 import os
 import pandas as pd
@@ -5,7 +7,7 @@ from copy import deepcopy
 from docx import Document
 from string import Template
 
-#生成资源文件目录访问路径
+# 资源文件打包到exe时，生成资源文件的访问路径
 def resource_path(relative_path):
     if getattr(sys, 'frozen', False): #是否Bundle Resource
         base_path = sys._MEIPASS
@@ -60,8 +62,6 @@ if __name__ == '__main__':
     excel_file = 'test.xlsx'
     excel_datas = pd.read_excel(excel_file,sheet_name=None)
 
-    # print(resource_path("mb.docx"))
-    # print(resource_path("new.docx"))
     template_docx = Document(resource_path("mb.docx"))
     new_docx = Document(resource_path("new.docx"))
     
@@ -73,7 +73,8 @@ if __name__ == '__main__':
             add_table(new_docx,template_docx,row)
 
     new_docx.save("test.docx")
-    print("test.docx is created")
+    
+    print("\033[1;32mtest.docx is created\033[0m")
 
     os.system("pause")
 

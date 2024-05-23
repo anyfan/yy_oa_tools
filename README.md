@@ -9,5 +9,5 @@ pip install -r requirements.txt
 
 ## 打包成可执行文件
 ```bash
-Pyinstaller -F main.py
+Pyinstaller main.spec
 ```
