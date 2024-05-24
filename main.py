@@ -45,21 +45,22 @@ def add_table(docx_obj,mb_obj,data_obj):
     
     for row in new_table.rows:
         for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    for run in paragraph.runs:
-                        run_template = Template(run.text)
-                        run.text = run_template.substitute(data)
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run_template = Template(run.text)
+                    run.text = run_template.substitute(data)
                         
     paragraph = docx_obj.add_paragraph(f"{data_obj['测试用例名称']}")
     paragraph._p.addnext(new_table._element)
     docx_obj.add_page_break()
 
 if __name__ == '__main__':
-    # if len(sys.argv) != 2:
-    #     print('Usage: %s <excel file>' % sys.argv[0])
-    #     sys.exit(1)
-    # excel_file = sys.argv[1]
-    excel_file = 'test.xlsx'
+    if len(sys.argv) != 2:
+        print('\033[0;31mneed excel file\033[0m')
+        os.system("pause")
+        sys.exit(1)
+    excel_file = sys.argv[1]
+    # excel_file = 'test.xlsx'
     excel_datas = pd.read_excel(excel_file,sheet_name=None)
 
     template_docx = Document(resource_path("mb.docx"))
@@ -74,7 +75,7 @@ if __name__ == '__main__':
 
     new_docx.save("test.docx")
     
-    print("\033[1;32mtest.docx is created\033[0m")
+    print("\033[0;32mtest.docx is created\033[0m")
 
     os.system("pause")
 
