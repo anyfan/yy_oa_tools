@@ -4,6 +4,8 @@ name: Package Application with Pyinstaller
 on:
   push:
     branches: [ master ]
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
   build:
@@ -12,8 +14,10 @@ jobs:
 
     steps:
     - run: echo "🎉 The job was triggered by a ${{ github.event_name }} event."
-    
-    - uses: actions/checkout@v2
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - name: Package Application
       uses: JackMcKew/pyinstaller-action-windows@main
       with:
@@ -26,4 +30,18 @@ jobs:
         name: oa_tools-win
         path: dist/windows
 
+    - name: Generate Changelog
+      run: echo "# Good things have arrived" > ${{ github.workspace }}-CHANGELOG.txt
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        body_path: ${{ github.workspace }}-CHANGELOG.txt
+        files: |
+            dist/*
+        draft: true
+        prerelease: true
+        token: ${{ secrets.RELEASE_TOKEN }}    
+    
     - run: echo "🍏 This job's status is ${{ job.status }}."
