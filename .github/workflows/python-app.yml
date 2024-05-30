@@ -39,7 +39,7 @@ jobs:
       with:
         body_path: ${{ github.workspace }}-CHANGELOG.txt
         files: |
-            dist/*
+            dist/windows/*
         draft: true
         prerelease: true
         token: ${{ secrets.RELEASE_TOKEN }}    
