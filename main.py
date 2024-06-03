@@ -29,6 +29,8 @@ def add_table(docx_obj,mb_obj,data_obj):
         'csylbs': data_obj['测试用例标识'],
         'cslx'  : data_obj['测试类型'],
         'hdz'   : data_obj['活动桩'],
+        'cryj'  : data_obj['插入语句'],
+        'qjbl'  : data_obj['创建全局变量'],
         'cssm'  : data_obj['测试说明'],
         'srblm' : data_obj['输入变量名称'],
         'srblqz': data_obj['取值'],
