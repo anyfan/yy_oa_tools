@@ -25,10 +25,10 @@ jobs:
         requirements: requirements.txt
         spec: build.spec
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: oa_tools-win
-        path: dist/windows
+    # - uses: actions/upload-artifact@v4
+    #   with:
+    #     name: oa_tools-win
+    #     path: dist/windows
 
     - name: Generate Changelog
       run: echo "# Good things have arrived" > ${{ github.workspace }}-CHANGELOG.txt
