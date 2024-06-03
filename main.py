@@ -62,7 +62,7 @@ if __name__ == '__main__':
         os.system("pause")
         sys.exit(1)
     excel_file = sys.argv[1]
-    # excel_file = 'test.xlsx'
+    # excel_file = 'dist/test.xlsx'
     excel_datas = pd.read_excel(excel_file,sheet_name=None)
 
     template_docx = Document(resource_path("mb.docx"))
@@ -75,9 +75,10 @@ if __name__ == '__main__':
             print(sheet_name, row['测试用例名称'])
             add_table(new_docx,template_docx,row)
 
-    new_docx.save("test.docx")
+    save_file_name = os.path.splitext(excel_file)[0] + '_oa.docx'
+    new_docx.save(save_file_name)
     
-    print("\033[0;32mtest.docx is created\033[0m")
+    print(f"\033[0;32m{save_file_name} is created\033[0m")
 
     os.system("pause")
 
