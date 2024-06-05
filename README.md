@@ -8,6 +8,8 @@
 
 ## 💫使用
 
+你可以在[github](https://github.com/anyfan/yy_oa_tools/releases)下载最新版本
+
 1. 命令行
 
 ```bash

@@ -1,8 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 add_files = [
-    ('mb.docx', '.'),
-    ('new.docx', '.')
+    ('template', 'template')
 ]
 
 a = Analysis(

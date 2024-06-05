@@ -65,8 +65,8 @@ if __name__ == '__main__':
     # excel_file = 'dist/test.xlsx'
     excel_datas = pd.read_excel(excel_file,sheet_name=None)
 
-    template_docx = Document(resource_path("mb.docx"))
-    new_docx = Document(resource_path("new.docx"))
+    template_docx = Document(resource_path("template/template.docx"))
+    new_docx = Document(resource_path("template/new.docx"))
     
     for sheet_name, df in excel_datas.items():
         if sheet_name in ['test', '索引']:
