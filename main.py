@@ -40,7 +40,7 @@ def add_table(docx_obj,mb_obj,data_obj):
         'sjz'   : data_obj['测试者/校对者'],
         'xdz'   : data_obj['测试者/校对者'],
         'csry'  : data_obj['测试者/校对者'],
-        'cszxsj': data_obj['测试时间'],
+        'cszxsj': data_obj['测试时间'].date() if isinstance(data_obj['测试时间'], pd.Timestamp) else data_obj['测试时间'],
     }
     
     new_table = deepcopy(mb_obj.tables[0])
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         os.system("pause")
         sys.exit(1)
     excel_file = sys.argv[1]
-    # excel_file = 'dist/test.xlsx'
+    # excel_file = 'dist/单元测试协同表格.xlsx'
     excel_datas = pd.read_excel(excel_file,sheet_name=None)
 
     template_docx = Document(resource_path("template/template.docx"))
