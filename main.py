@@ -15,6 +15,12 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+def clean_string(input_string):
+    if isinstance(input_string, str):
+        return input_string.replace('\n', '')
+    else:
+        return input_string
+
 def add_table(docx_obj,mb_obj,data_obj): 
     
     data = {
@@ -22,8 +28,8 @@ def add_table(docx_obj,mb_obj,data_obj):
         'sjzs'  : data_obj['设计追踪'],
         'gnms'  : data_obj['功能描述'],
         'qdmk'  : data_obj['驱动模块'],
-        'dzmk'  : data_obj['打桩模块'],
-        'fgljl' : data_obj['覆盖率记录'],
+        'dzmk'  : clean_string(data_obj['打桩模块']),
+        'fgljl' : clean_string(data_obj['覆盖率记录']),
         'bz'    : data_obj['备注'],
         'csylmc': data_obj['测试用例名称'],
         'csylbs': data_obj['测试用例标识'],
