@@ -11,8 +11,8 @@ VSVersionInfo(
         # 接下来的 16 位是 FileMinorPart 数字。
         # 第三组 16 位是 FileBuildPart 数字。
         # 最后 16 位是 FilePrivatePart 数字。
-        filevers=(${Major}, ${Minor}, ${Revision}, ${Classify}),
-        prodvers=(${Major}, ${Minor}, ${Revision}, ${Classify}),
+        filevers=(${Major}, ${Minor}, ${Revision}, ${Classify_num}),
+        prodvers=(${Major}, ${Minor}, ${Revision}, ${Classify_num}),
         # Contains a bitmask that specifies the valid bits 'flags'r
         mask=0x3F,
         # Contains a bitmask that specifies the Boolean attributes of the file.
@@ -37,7 +37,7 @@ VSVersionInfo(
                     [
                         StringStruct("CompanyName", "Aerospace Adventure"),
                         StringStruct("FileDescription", "软测办公自动化"),
-                        StringStruct("FileVersion", "${git_tag}"),
+                        StringStruct("FileVersion", "${version}"),
                         StringStruct("InternalName", "Python Console"),
                         StringStruct(
                             "LegalCopyright",
@@ -45,7 +45,7 @@ VSVersionInfo(
                         ),
                         StringStruct("OriginalFilename", "oa_tools.exe"),
                         StringStruct("ProductName", "自动化办公工具集"),
-                        StringStruct("ProductVersion", "${git_tag}"),
+                        StringStruct("ProductVersion", "${version}"),
                     ],
                 )
             ]

@@ -29,7 +29,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="oa_tools-" + version_data["git_tag"],
+    name="oa_tools-" + version_data["version"],
     version="build/win_version.py",
     debug=False,
     bootloader_ignore_signals=False,
