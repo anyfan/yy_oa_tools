@@ -1,4 +1,4 @@
 .vscode
 build
 dist
-test.xlsx
+__pycache__
