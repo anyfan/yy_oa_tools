@@ -88,7 +88,9 @@ if __name__ == '__main__':
     excel_datas = {sheet_name: df.astype(str) for sheet_name, df in excel_datas.items()}
 
     template_docx = Document(resource_path("template/template.docx"))    # 加载Word文档模板
-    new_docx = Document(resource_path("template/new.docx"))              # 创建新的Word文档对象
+    new_docx = Document(resource_path("template/new.docx"))   # 创建新的Word文档对象
+
+    template_count = 0  # 初始化模板计数器
     
     for sheet_name, df in excel_datas.items():                           # 遍历Excel数据，生成测试文档
         if sheet_name in ['test', '索引']:
@@ -96,11 +98,13 @@ if __name__ == '__main__':
         for index, row in df.iterrows():
             print(sheet_name, row['测试用例名称'])
             add_table(new_docx,template_docx,row)
+            template_count += 1  # 每成功填充一次模板，计数器加一
 
     save_file_name = os.path.splitext(excel_file)[0] + '_oa.docx'
     new_docx.save(save_file_name)
     
     print(f"\033[0;32m{save_file_name} is created\033[0m")
+    print(f"\033[0;32m一共执行了{template_count}个测试用例\033[0m")  # 打印生成的用例次数
 
     os.system("pause")
 
