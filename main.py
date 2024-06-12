@@ -18,6 +18,12 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+def fill_merged_cells(df):
+    for col in df.columns:
+        df[col] = df[col].ffill().infer_objects(copy=False)
+    return df
+
+
 def add_table(docx_obj, mb_obj, data_obj):
 
     # 去除所有换行符
@@ -89,6 +95,9 @@ if __name__ == "__main__":
     excel_datas = pd.read_excel(
         excel_file, sheet_name=None
     )  # 读取Excel文件中的数据，读取后对 DataFrame 进行转换
+    excel_datas = {
+        sheet_name: fill_merged_cells(df) for sheet_name, df in excel_datas.items()
+    }  # 处理合并单元格
     excel_datas = {sheet_name: df.astype(str) for sheet_name, df in excel_datas.items()}
 
     template_docx = Document(
@@ -96,18 +105,22 @@ if __name__ == "__main__":
     )  # 加载Word文档模板
     new_docx = Document(resource_path("template/new.docx"))  # 创建新的Word文档对象
 
+    template_count = 0  # 初始化模板计数器
+
     for sheet_name, df in excel_datas.items():  # 遍历Excel数据，生成测试文档
         if sheet_name in ["test", "索引"]:
             continue
         for index, row in df.iterrows():
             print(sheet_name, row["测试用例名称"])
             add_table(new_docx, template_docx, row)
+            template_count += 1  # 每成功填充一次模板，计数器加一
 
     save_file_name = os.path.splitext(excel_file)[0] + "_oa.docx"
     new_docx.save(save_file_name)
 
     print(f"\033[0;32m{save_file_name} is created\033[0m")
+    print(
+        f"\033[0;32m一共执行了{template_count}个测试用例\033[0m"
+    )  # 打印生成的用例次数
 
     os.system("pause")
-
-# ☑☐□
