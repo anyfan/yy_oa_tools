@@ -6,11 +6,12 @@ from copy import deepcopy
 from docx import Document
 from string import Template
 
+
 class TestDocumentGenerator:
     def __init__(self, template_path):
         self.template_path = template_path
         self.template_docx = Document(self.resource_path(template_path))
-        self.new_docx = Document()
+        self.new_docx = Document(self.resource_path("template/new.docx"))
         self.template_count = 0
 
     @staticmethod
@@ -105,9 +106,7 @@ class TestDocumentGenerator:
             for _, row in df.iterrows():
                 self.add_table(row)
                 if callback:
-                    callback(
-                        f"{sheet_name} {row["测试用例名称"]}"
-                    )
+                    callback(f"{sheet_name} {row["测试用例名称"]}")
         self.new_docx.save(save_path)
         return self.template_count
 
