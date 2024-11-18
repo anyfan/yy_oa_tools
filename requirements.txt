@@ -2,3 +2,4 @@ openpyxl
 python-docx
 Pyinstaller
 pandas
+pyqt5
