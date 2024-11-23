@@ -3,9 +3,12 @@
 import sys
 sys.path.append(SPECPATH)
 
-from version import version_data
+from build_version import version_data
 
-add_files = [("template\*.docx", "template")]
+add_files = [
+    ("template\*.docx", "template"),
+    ("template\*.xml", "template"),
+]
 
 a = Analysis(
     ["main.py"],  # 此列表存放项目设计的所有python脚本文件

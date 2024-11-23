@@ -1,133 +1,330 @@
-# coding=utf-8
-import sys
-import os
-import pandas as pd
-from copy import deepcopy
 from docx import Document
 from string import Template
+from docx.oxml.parser import parse_xml
+import pandas as pd
+import re
+import sys
+import os
 
 
-class TestDocumentGenerator:
-    def __init__(self, template_path):
-        self.template_path = template_path
-        self.template_docx = Document(self.resource_path(template_path))
-        self.new_docx = Document(self.resource_path("template/new.docx"))
-        self.template_count = 0
+def resource_path(relative_path):
+    """获取资源文件的路径，兼容pyinstaller打包"""
+    if getattr(sys, "frozen", False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
+class UnitTestTestCaseDocumentGenerator:
+
+    def __init__(
+        self,
+        template_doc_path=resource_path("template/new.docx"),
+        table_template_path=resource_path("template/ut_table.xml"),
+        row_template_path=resource_path("template/ut_table_tr.xml"),
+    ):
+        # 初始化模板文件路径
+        self.template_doc_path = template_doc_path
+        self.table_template_path = table_template_path
+        self.row_template_path = row_template_path
+
+        with open(self.table_template_path, "r", encoding="utf-8") as file:
+            self.table_template_xml = file.read()
+
+        with open(self.row_template_path, "r", encoding="utf-8") as file:
+            self.row_template_xml = file.read()
 
     @staticmethod
-    def resource_path(relative_path):
-        """获取资源文件的路径，兼容pyinstaller打包"""
-        if getattr(sys, "frozen", False):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.abspath(".")
-        return os.path.join(base_path, relative_path)
+    def escape_ampersand(text):
+        """将 & 替换为 &amp;"""
+        return text.replace("&", "&amp;")
+
+    def parse_input_data(self, input_names, input_values):
+        """解析输入数据"""
+        name_list = re.split(r"[;,，\n]", input_names)
+        parsed_names = []
+        for name in name_list:
+            name = name.strip()
+            if not name:
+                continue
+            matches = re.findall(r"\*?\s*([a-zA-Z_]\w*)", name)
+            name = self.escape_ampersand(matches[1])
+            parsed_names.append(name)
+
+        value_list = re.split(r"[;,，\n]", input_values)
+        parsed_values = []
+        for value in value_list:
+            value = value.strip()
+            if not value:
+                continue
+            parsed_values.append(self.escape_ampersand(value))
+        return parsed_names, parsed_values
 
     @staticmethod
-    def fill_merged_cells(df):
-        """填充DataFrame中的合并单元格"""
-        for col in df.columns:
-            df[col] = df[col].ffill().infer_objects(copy=False)
-        return df
+    def parse_output_data(output_string):
+        """解析输出数据"""
+        output_string = str(output_string)
+        output_list = re.split(r"[;,，\n]", output_string)
+        parsed_outputs = [output.strip() for output in output_list if output.strip()]
+        return parsed_outputs
 
     @staticmethod
-    def process_data(data_obj):
-        """处理数据对象，适配模板"""
-        rm_br = lambda x: (
-            x.replace("\n", "") if isinstance(x, str) else x
-        )  # 去除所有换行符
-        add_br = lambda x: "\n" + x if "\n" in x else x  # 存在换行符,句首添加换行符
-        str_time = lambda x: (
-            x.date() if isinstance(x, pd.Timestamp) else x
-        )  # timestamp转str
-        get_tester = lambda x: x.split("/")[0] if "/" in x else x  # 获取测试者
-        get_checker = lambda x: x.split("/")[1] if "/" in x else x  # 获取校对者
+    def parse_insert_statements(statement_string):
+        """解析插入语句"""
+        statement_list = re.split(r"[;,，\n]", statement_string)
+        parsed_names, parsed_values = [], []
+        for statement in statement_list:
+            statement = statement.strip()
+            if not statement:
+                continue
+            matches = re.findall(r"(\w+\.\w+)\s*=\s*(\w+)", statement)
+            if matches:
+                parsed_names.append(matches[0][0])
+                parsed_values.append(matches[0][1])
+        return parsed_names, parsed_values
 
-        return {
-            "dybs": data_obj["单元标识"],
-            "sjzs": data_obj["设计追踪"],
-            "gnms": data_obj["功能描述"],
-            "qdmk": data_obj["驱动模块"],
-            "dzmk": rm_br(data_obj["打桩模块"]),
-            "fgljl": rm_br(data_obj["覆盖率记录"]),
-            "bz": data_obj["备注"],
-            "csylmc": data_obj["测试用例名称"],
-            "csylbs": data_obj["测试用例标识"],
-            "cslx": data_obj["测试类型"],
-            "hdz": data_obj["活动桩"],
-            "cryj": add_br(data_obj["插入语句"]),
-            "qjbl": add_br(data_obj["创建全局变量"]),
-            "cssm": data_obj["测试说明"],
-            "srblm": data_obj["输入变量名称"],
-            "srblqz": data_obj["取值"],
-            "scblm": data_obj["输出变量名称"],
-            "yqsc": data_obj["预期输出"],
-            "sjsc": data_obj["实际输出"],
-            "sjz": get_tester(data_obj["测试者/校对者"]),
-            "xdz": get_checker(data_obj["测试者/校对者"]),
-            "csry": get_tester(data_obj["测试者/校对者"]),
-            "cszxsj": str_time(data_obj["测试时间"]),
+    @staticmethod
+    def fill_empty_cells(data_frame):
+        """填充 DataFrame 中的合并单元格"""
+        for column in data_frame.columns:
+            data_frame[column] = data_frame[column].ffill().infer_objects(copy=False)
+        return data_frame
+
+    def process_test_case_data(self, test_case_data):
+        """处理单个测试用例数据"""
+        input_index = 0
+        output_index = 0
+        io_data_frame = pd.DataFrame(
+            columns=[
+                "input_names",
+                "input_values",
+                "output_names",
+                "expected_values",
+                "actual_values",
+            ]
+        )
+
+        insert_names, insert_values = self.parse_insert_statements(
+            test_case_data["插入语句"]
+        )
+        input_names, input_values = self.parse_input_data(
+            test_case_data["输入变量名称"], test_case_data["取值"]
+        )
+        input_data = pd.DataFrame(
+            {
+                "input_names": insert_names + input_names,
+                "input_values": insert_values + input_values,
+            }
+        )
+
+        # 填充输入数据
+        for _, row in input_data.iterrows():
+            io_data_frame.loc[input_index, ["input_names", "input_values"]] = row[
+                ["input_names", "input_values"]
+            ]
+            input_index += 1
+
+        output_data = pd.DataFrame(
+            {
+                "output_names": self.parse_output_data(test_case_data["输出变量名称"]),
+                "expected_values": self.parse_output_data(test_case_data["预期输出"]),
+                "actual_values": self.parse_output_data(test_case_data["实际输出"]),
+            }
+        )
+
+        # 填充输出数据
+        for _, row in output_data.iterrows():
+            io_data_frame.loc[
+                output_index, ["output_names", "expected_values", "actual_values"]
+            ] = row[["output_names", "expected_values", "actual_values"]]
+            output_index += 1
+
+        return io_data_frame
+
+    def add_report_test_case_table(self, doc, test_case_data):
+        """将测试用例数据添加为表格"""
+        row_xml = ""
+        test_case_io_data = self.process_test_case_data(test_case_data)
+
+        nan2blank = lambda x: "" if pd.isna(x) else x
+
+        for _, row in test_case_io_data.iterrows():
+            temp_row_template = self.row_template_xml
+            row_data = {
+                "srblm": nan2blank(row["input_names"]),
+                "srblqz": nan2blank(row["input_values"]),
+                "scblm": nan2blank(row["output_names"]),
+                "yqsc": nan2blank(row["expected_values"]),
+                "sjsc": nan2blank(row["actual_values"]),
+            }
+            row_xml += Template(temp_row_template).substitute(row_data)
+
+            # 处理数据映射
+
+        def remove_newlines(text):
+            return text.replace("\n", "") if isinstance(text, str) else text
+
+        def prepend_newline_if_needed(text):
+            return "\n" + text if isinstance(text, str) and "\n" in text else text
+
+        def format_date(value):
+            return value.date() if isinstance(value, pd.Timestamp) else value
+
+        def extract_tester(value):
+            return value.split("/")[0] if "/" in value else value
+
+        def extract_checker(value):
+            return value.split("/")[1] if "/" in value else value
+
+        test_case_mapping = {
+            "dybs": test_case_data["单元标识"],
+            "sjzs": test_case_data["设计追踪"],
+            "gnms": test_case_data["功能描述"],
+            "qdmk": test_case_data["驱动模块"],
+            "dzmk": test_case_data["打桩模块"].replace("\n", ""),
+            "fgljl": test_case_data["覆盖率记录"].replace("\n", "").replace("。", ""),
+            "bz": test_case_data["备注"],
+            "csylmc": test_case_data["测试用例名称"],
+            "csylbs": test_case_data["测试用例标识"],
+            "cslx": test_case_data["测试类型"],
+            "hdz": test_case_data["活动桩"],
+            "cssm": test_case_data["测试说明"],
+            "table": row_xml,
+            "tgzz": "实际测试结果与预期结果一致。",
+            "ycxxms": "无",
+            "rjwtbh": "无",
+            "zxqk_zx": "☑",
+            "zxqk_wzx": "□",
+            "zxjg_tg": "☑",
+            "zxjg_wtg": "□",
+            "sjz": extract_tester(test_case_data["测试者/校对者"]),
+            "xdz": extract_checker(test_case_data["测试者/校对者"]),
+            "csry": extract_tester(test_case_data["测试者/校对者"]),
+            "cszxsj": format_date(test_case_data["测试时间"]),
         }
+        table_xml = Template(self.table_template_xml).substitute(test_case_mapping)
+        table_element = parse_xml(table_xml)
+        paragraph = doc.add_paragraph(f"{test_case_data['测试用例名称']}")
+        paragraph._p.addnext(table_element)
+        doc.add_page_break()
 
-    def add_table(self, data_obj):
-        """根据数据生成表格并添加到文档"""
-        data = self.process_data(data_obj)
-
-        new_table = deepcopy(self.template_docx.tables[0])
-
-        for row in new_table.rows:
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    for run in paragraph.runs:
-                        run_template = Template(run.text)
-                        run.text = run_template.substitute(data)
-
-        paragraph = self.new_docx.add_paragraph(f"{data_obj['测试用例名称']}")
-        paragraph._p.addnext(new_table._element)
-        self.new_docx.add_page_break()
-
-        self.template_count += 1
-
-    def generate(self, excel_file, save_path, callback=None):
-        """根据Excel生成文档"""
-        excel_data = pd.read_excel(excel_file, sheet_name=None)
-        excel_data = {
-            sheet_name: self.fill_merged_cells(df)
-            for sheet_name, df in excel_data.items()
+    def generate_report_document(self, excel_path, output_path, callback=None):
+        """从 Excel 文件生成 Word 文档"""
+        output_doc = Document(self.template_doc_path)
+        excel_sheets = pd.read_excel(excel_path, sheet_name=None)
+        excel_sheets = {
+            sheet_name: self.fill_empty_cells(sheet_data)
+            for sheet_name, sheet_data in excel_sheets.items()
         }
-        excel_data = {
-            sheet_name: df.astype(str) for sheet_name, df in excel_data.items()
-        }
-
-        self.template_count = 0
-        for sheet_name, df in excel_data.items():
+        case_count = 0
+        for sheet_name, sheet_data in excel_sheets.items():
             if sheet_name in ["test", "索引"]:
                 continue
-            for _, row in df.iterrows():
-                self.add_table(row)
+            for _, row_data in sheet_data.iterrows():
+                self.add_report_test_case_table(output_doc, row_data)
+                case_count += 1
                 if callback:
-                    callback(f"{sheet_name} {row["测试用例名称"]}")
-        self.new_docx.save(save_path)
-        return self.template_count
+                    callback(f"{sheet_name} {row_data["测试用例名称"]}")
+
+        output_doc.save(output_path)
+        return case_count
+
+    def add_instructions_test_case_table(self, doc, test_case_data):
+        """将测试用例数据添加为表格"""
+        row_xml = ""
+        test_case_io_data = self.process_test_case_data(test_case_data)
+
+        nan2blank = lambda x: "" if pd.isna(x) else x
+
+        for _, row in test_case_io_data.iterrows():
+            temp_row_template = self.row_template_xml
+            row_data = {
+                "srblm": nan2blank(row["input_names"]),
+                "srblqz": nan2blank(row["input_values"]),
+                "scblm": nan2blank(row["output_names"]),
+                "yqsc": nan2blank(row["expected_values"]),
+                "sjsc": "",
+            }
+            row_xml += Template(temp_row_template).substitute(row_data)
+
+            # 处理数据映射
+
+        def remove_newlines(text):
+            return text.replace("\n", "") if isinstance(text, str) else text
+
+        def prepend_newline_if_needed(text):
+            return "\n" + text if isinstance(text, str) and "\n" in text else text
+
+        def format_date(value):
+            return value.date() if isinstance(value, pd.Timestamp) else value
+
+        def extract_tester(value):
+            return value.split("/")[0] if "/" in value else value
+
+        def extract_checker(value):
+            return value.split("/")[1] if "/" in value else value
+
+        test_case_mapping = {
+            "dybs": test_case_data["单元标识"],
+            "sjzs": test_case_data["设计追踪"],
+            "gnms": test_case_data["功能描述"],
+            "qdmk": "系统自动生成（需要驱动模块时，写具体模块名）",
+            "dzmk": test_case_data["打桩模块"].replace("\n", ""),
+            "fgljl": "",
+            "bz": test_case_data["备注"],
+            "csylmc": test_case_data["测试用例名称"],
+            "csylbs": test_case_data["测试用例标识"],
+            "cslx": test_case_data["测试类型"],
+            "hdz": test_case_data["活动桩"],
+            "cssm": test_case_data["测试说明"],
+            "table": row_xml,
+            "tgzz": "实际测试结果与预期结果一致。",
+            "ycxxms": "",
+            "rjwtbh": "",
+            "zxqk_zx": "□",
+            "zxqk_wzx": "□",
+            "zxjg_tg": "□",
+            "zxjg_wtg": "□",
+            "sjz": extract_tester(test_case_data["测试者/校对者"]),
+            "xdz": extract_checker(test_case_data["测试者/校对者"]),
+            "csry": "",
+            "cszxsj": "",
+        }
+        table_xml = Template(self.table_template_xml).substitute(test_case_mapping)
+        table_element = parse_xml(table_xml)
+        paragraph = doc.add_paragraph(f"{test_case_data['测试用例名称']}")
+        paragraph._p.addnext(table_element)
+        doc.add_page_break()
+
+    def generate_instruction_document(self, excel_path, output_path, callback=None):
+        """从 Excel 文件生成 Word 文档"""
+        output_doc = Document(self.template_doc_path)
+        excel_sheets = pd.read_excel(excel_path, sheet_name=None)
+        excel_sheets = {
+            sheet_name: self.fill_empty_cells(sheet_data)
+            for sheet_name, sheet_data in excel_sheets.items()
+        }
+        case_count = 0
+        for sheet_name, sheet_data in excel_sheets.items():
+            if sheet_name in ["test", "索引"]:
+                continue
+            for _, row_data in sheet_data.iterrows():
+                self.add_instructions_test_case_table(output_doc, row_data)
+                case_count += 1
+                if callback:
+                    callback(f"{sheet_name} {row_data["测试用例名称"]}")
+
+        output_doc.save(output_path)
+        return case_count
 
 
-# 调用示例
 if __name__ == "__main__":
-    DEBUG_MODE = False
-    generator = TestDocumentGenerator("template/template.docx")
-
-    if len(sys.argv) != 2 and not DEBUG_MODE:
-        print("\033[0;31mneed excel file\033[0m")
-        os.system("pause")
-        sys.exit(1)
-
-    excel_file = "dist/单元测试协同表格.xlsx" if DEBUG_MODE else sys.argv[1]
-    save_file_name = os.path.splitext(excel_file)[0] + "_oa.docx"
-
-    try:
-        count = generator.generate(excel_file, save_file_name)
-        print(f"\033[0;32m{save_file_name} is created with {count} test cases\033[0m")
-    except Exception as e:
-        print(f"\033[0;31mError: {e}\033[0m")
-
-    os.system("pause")
+    # 使用示例
+    generator = UnitTestTestCaseDocumentGenerator()
+    generator.generate_report_document(
+        "dist/信息综合软件单元测试.xlsx", "test.docx"
+    )
+    # generator.generate_instructions_document(
+    #     "dist/信息综合软件单元测试.xlsx", "test.docx"
+    # )

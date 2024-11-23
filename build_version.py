@@ -1,11 +1,28 @@
 # UTF-8
 import re
+import time
 import subprocess
 from string import Template
 
 # 获取当前分支最新tag string
 git_tag = (
     subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"])
+    .decode()
+    .strip()
+)
+
+git_branch = (
+    subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    .decode()
+    .strip()
+)
+git_hash = (
+    subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+    .decode()
+    .strip()
+)
+git_log = (
+    subprocess.check_output(["git", "log", "-10", "--pretty=format:%ad - %s", "--date=short"])
     .decode()
     .strip()
 )
@@ -27,7 +44,10 @@ git_status = (
 match = re.match(r"^v(\d+)\.(\d+)\.(\d+)([\D]+)$", git_tag)
 
 version_data = {
-    "git_tag": git_tag,
+    "git_branch": git_branch,
+    "git_log": git_log,
+    "git_hash": git_hash,
+    "build_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
     "Major": int(match.group(1)),  # 主要
     "Minor": int(match.group(2)),  # 次要
     "Revision": int(match.group(3)) + int(commits_ahead),  # 修订
@@ -47,3 +67,7 @@ ntext = Template(text).substitute(version_data)
 # 保存到文件中
 with open("build/win_version.py", "w", encoding="utf-8") as fp:
     fp.write(ntext)
+
+# 将version_data变量保存到文件中
+with open("build/version_data.py", "w", encoding="utf-8") as fp:
+    fp.write("version_data = " + str(version_data))
