@@ -8,6 +8,7 @@ from build_version import version_data
 add_files = [
     ("template\*.docx", "template"),
     ("template\*.xml", "template"),
+    ("assets\*.svg", "assets"),
 ]
 
 a = Analysis(

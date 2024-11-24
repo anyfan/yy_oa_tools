@@ -287,6 +287,15 @@ class ProgramInfo(QWidget):
         layout.addWidget(change_log_label)
 
 
+def resource_path(relative_path):
+    """获取资源文件的路径，兼容pyinstaller打包"""
+    if getattr(sys, "frozen", False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 # 主窗口类
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -294,6 +303,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(
             "OA tools " + version_data["version"] + "  " + version_data["build_time"]
         )
+        self.setWindowIcon(QIcon(resource_path("assets/app_icon.svg")))
         self.resize(500, 400)
 
         # 创建菜单栏
