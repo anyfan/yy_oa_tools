@@ -1,6 +1,7 @@
 from docx import Document
 from string import Template
 from docx.oxml.parser import parse_xml
+from html import escape
 import pandas as pd
 import re
 import sys
@@ -37,8 +38,9 @@ class UnitTestTestCaseDocumentGenerator:
 
     @staticmethod
     def escape_ampersand(text):
-        """将 & 替换为 &amp;"""
-        return text.replace("&", "&amp;")
+        """将 & 替换为 &amp; > 替换为 &gt; < 替换为 &lt;"""
+        # return text.replace("&", "&amp;").replace(">", "&gt;").replace("<", "&lt;")
+        return escape(text)
 
     def parse_input_data(self, input_names, input_values):
         """解析输入数据"""
@@ -63,16 +65,22 @@ class UnitTestTestCaseDocumentGenerator:
             parsed_values.append(self.escape_ampersand(value))
         return parsed_names, parsed_values
 
-    @staticmethod
-    def parse_output_data(output_string):
+    def parse_output_data(self, output_string):
         """解析输出数据"""
+        if pd.isna(output_string):
+            return []
         output_string = str(output_string)
         output_list = re.split(r"[;,，\n]", output_string)
-        parsed_outputs = [output.strip() for output in output_list if output.strip()]
+        parsed_outputs = []
+        for output in output_list:
+            if output.strip():
+                output = self.escape_ampersand(output.strip())
+                parsed_outputs.append(output)
         return parsed_outputs
 
     @staticmethod
     def parse_insert_statements(statement_string):
+        statement_string = str(statement_string)
         """解析插入语句"""
         statement_list = re.split(r"[;,，\n]", statement_string)
         parsed_names, parsed_values = [], []
@@ -187,7 +195,7 @@ class UnitTestTestCaseDocumentGenerator:
                     "csylbs": test_case_data["测试用例标识"],
                     "cslx": test_case_data["测试类型"],
                     "hdz": test_case_data["活动桩"],
-                    "cssm": test_case_data["测试说明"],
+                    "cssm": self.escape_ampersand(test_case_data["测试说明"]),
                     "table": row_xml,
                     "tgzz": "实际测试结果与预期结果一致。",  # 通过准则
                     "ycxxms": "无",  # 异常现象描述
@@ -226,7 +234,7 @@ class UnitTestTestCaseDocumentGenerator:
                     "csylbs": test_case_data["测试用例标识"],
                     "cslx": test_case_data["测试类型"],
                     "hdz": test_case_data["活动桩"],
-                    "cssm": test_case_data["测试说明"],
+                    "cssm": self.escape_ampersand(test_case_data["测试说明"]),
                     "table": row_xml,
                     "tgzz": "实际测试结果与预期结果一致。",
                     "ycxxms": "",
@@ -280,7 +288,7 @@ if __name__ == "__main__":
     #     callback=lambda x: print(x),
     # )
     generator.generate_document(
-        "dist/信息综合软件单元测试.xlsx",
+        "dist/新建 XLSX 工作表.xlsx",
         "dist/test.docx",
         mode="instructions",
         callback=lambda x: print(x),
